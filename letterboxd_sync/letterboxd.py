@@ -119,16 +119,20 @@ def parse_film_page(page: str, slug: str) -> Film:
     """Extract TMDB/IMDb ids and a display title from a Letterboxd film page."""
     film = Film(slug=slug)
 
-    tmdb_id = TMDB_ID_PATTERN.search(page)
-    tmdb_type = TMDB_TYPE_PATTERN.search(page)
-    if tmdb_id:
-        film.tmdb_id = int(tmdb_id.group(1))
-        film.tmdb_type = tmdb_type.group(1) if tmdb_type else "movie"
+    # The TMDb link is authoritative. <body data-tmdb-id> disagrees with it for
+    # entries TMDB files as a series - band-of-brothers advertises a movie id of
+    # 331214 in the body while linking to tv/4613 - so only trust the body
+    # attributes when there is no link to read.
+    url_match = TMDB_URL_PATTERN.search(page)
+    if url_match:
+        film.tmdb_type = url_match.group(1)
+        film.tmdb_id = int(url_match.group(2))
     else:
-        url_match = TMDB_URL_PATTERN.search(page)
-        if url_match:
-            film.tmdb_type = url_match.group(1)
-            film.tmdb_id = int(url_match.group(2))
+        tmdb_id = TMDB_ID_PATTERN.search(page)
+        tmdb_type = TMDB_TYPE_PATTERN.search(page)
+        if tmdb_id:
+            film.tmdb_id = int(tmdb_id.group(1))
+            film.tmdb_type = tmdb_type.group(1) if tmdb_type else "movie"
 
     imdb = IMDB_PATTERN.search(page)
     if imdb:

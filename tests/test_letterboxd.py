@@ -57,6 +57,13 @@ def test_parse_film_page_detects_tv_entries():
     assert film.tmdb_type == "tv"
     assert film.tmdb_id == 42009
 
+def test_tmdb_link_wins_over_a_contradicting_body_attribute():
+    # Letterboxd advertises a stale movie id in <body> for entries TMDB files as
+    # a series. The TMDb link is the one that resolves.
+    film = parse_film_page(fixture("film_tv_mislabelled.html"), "band-of-brothers")
+    assert film.tmdb_type == "tv"
+    assert film.tmdb_id == 4613
+
 def test_parse_film_page_without_ids_yields_no_tmdb_id():
     film = parse_film_page("<html><body>nothing here</body></html>", "mystery")
     assert film.tmdb_id is None
