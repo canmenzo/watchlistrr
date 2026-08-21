@@ -6,3 +6,6 @@ venv/
 .env
 config/
 *.db
+
+# personal deployment notes (contains LAN addresses)
+SETUP-NAS.md
