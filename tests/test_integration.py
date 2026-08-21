@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from letterboxd_sync.__main__ import main
+from watchlistrr.__main__ import main
 
 WATCHLIST_PAGE_1 = """<!DOCTYPE html><html><body>
 <ul class="poster-list -p70 -grid">

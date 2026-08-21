@@ -1,9 +1,9 @@
 import pytest
 
-from letterboxd_sync import sync as sync_module
-from letterboxd_sync.cache import Cache
-from letterboxd_sync.config import Config
-from letterboxd_sync.letterboxd import Film
+from watchlistrr import sync as sync_module
+from watchlistrr.cache import Cache
+from watchlistrr.config import Config
+from watchlistrr.letterboxd import Film
 
 FILMS = {
     "parasite-2019": Film("parasite-2019", "Parasite", 2019, 496243, "movie", "tt6751668"),

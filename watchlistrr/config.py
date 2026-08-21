@@ -58,7 +58,7 @@ class Config:
     interval_minutes: int = 0
     dry_run: bool = False
     limit: int = 0
-    cache_path: str = "/config/letterboxd-sync.db"
+    cache_path: str = "/config/watchlistrr.db"
     request_delay: float = 1.0
     max_pages: int = 100
     http_timeout: int = 30
@@ -119,7 +119,7 @@ def load_config() -> Config:
     cfg.interval_minutes = _int("SYNC_INTERVAL_MINUTES", 0)
     cfg.dry_run = _bool("DRY_RUN", False)
     cfg.limit = _int("LIMIT", 0)
-    cfg.cache_path = _str("CACHE_PATH", "/config/letterboxd-sync.db")
+    cfg.cache_path = _str("CACHE_PATH", "/config/watchlistrr.db")
     cfg.request_delay = _float("REQUEST_DELAY_SECONDS", 1.0)
     cfg.max_pages = _int("MAX_PAGES", 100)
     cfg.http_timeout = _int("HTTP_TIMEOUT", 30)

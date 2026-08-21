@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from letterboxd_sync.config import ConfigError, load_config, normalise_list_ref
+from watchlistrr.config import ConfigError, load_config, normalise_list_ref
 
 
 @pytest.fixture(autouse=True)

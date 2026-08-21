@@ -15,7 +15,7 @@ from .letterboxd import LetterboxdClient, ScrapeError
 from .overseerr import OverseerrClient, OverseerrError
 from .sync import run_once
 
-log = logging.getLogger("letterboxd_sync")
+log = logging.getLogger("watchlistrr")
 
 _stopping = False
 
@@ -71,7 +71,7 @@ def check(cfg: Config) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="letterboxd-sync",
+        prog="watchlistrr",
         description="Sync a Letterboxd watchlist into Seerr (formerly Overseerr).",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGINT, _handle_signal)
 
     interval = 0 if args.once else max(0, cfg.interval_minutes)
-    log.info("letterboxd-sync %s starting (dry_run=%s, %s)",
+    log.info("watchlistrr %s starting (dry_run=%s, %s)",
              __version__, cfg.dry_run,
              f"every {interval} min" if interval else "single run")
 

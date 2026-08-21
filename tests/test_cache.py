@@ -1,5 +1,5 @@
-from letterboxd_sync.cache import Cache
-from letterboxd_sync.letterboxd import Film
+from watchlistrr.cache import Cache
+from watchlistrr.letterboxd import Film
 
 
 def make_cache(tmp_path) -> Cache:

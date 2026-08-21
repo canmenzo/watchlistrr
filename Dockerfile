@@ -2,14 +2,14 @@ FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    CACHE_PATH=/config/letterboxd-sync.db
+    CACHE_PATH=/config/watchlistrr.db
 
 WORKDIR /app
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY letterboxd_sync ./letterboxd_sync
+COPY watchlistrr ./watchlistrr
 
 # The image runs as root by default so it can create /config on first start.
 # Set `user: "1000:1000"` in docker-compose.yml (and chown the volume) to drop
@@ -17,4 +17,4 @@ COPY letterboxd_sync ./letterboxd_sync
 RUN mkdir -p /config && chmod 777 /config
 VOLUME ["/config"]
 
-ENTRYPOINT ["python", "-m", "letterboxd_sync"]
+ENTRYPOINT ["python", "-m", "watchlistrr"]

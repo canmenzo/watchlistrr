@@ -1,6 +1,6 @@
-# 🎬 letterboxd-overseerr-sync
+# 🎬 Watchlistrr
 
-[![tests](https://github.com/canmenzo/letterboxd-overseerr-sync/actions/workflows/tests.yml/badge.svg)](https://github.com/canmenzo/letterboxd-overseerr-sync/actions/workflows/tests.yml)
+[![tests](https://github.com/canmenzo/watchlistrr/actions/workflows/tests.yml/badge.svg)](https://github.com/canmenzo/watchlistrr/actions/workflows/tests.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Everything on your **Letterboxd watchlist**, automatically requested in **Seerr** (formerly
@@ -11,7 +11,7 @@ Films are matched by **TMDB ID**, never by title, so *Nosferatu (1922)* can neve
 when you meant *Nosferatu (2024)*. No browser, no third-party service.
 
 ```
-Letterboxd watchlist ──▶ letterboxd-overseerr-sync ──▶ Seerr ──▶ Radarr ──▶ your library
+Letterboxd watchlist ──▶ Watchlistrr ──▶ Seerr ──▶ Radarr ──▶ your library
 ```
 
 ---
@@ -27,14 +27,14 @@ page like a browser would. No login, no password.
 **3.** Configure and test:
 
 ```bash
-git clone https://github.com/canmenzo/letterboxd-overseerr-sync.git
-cd letterboxd-overseerr-sync
+git clone https://github.com/canmenzo/watchlistrr.git
+cd watchlistrr
 cp .env.example .env
 nano .env                 # LETTERBOXD_USERNAME, OVERSEERR_URL, OVERSEERR_API_KEY
 mkdir -p config
 
-docker compose run --rm letterboxd-sync --check                     # verify every endpoint
-docker compose run --rm letterboxd-sync --once --dry-run --limit 5  # rehearsal
+docker compose run --rm watchlistrr --check                     # verify every endpoint
+docker compose run --rm watchlistrr --once --dry-run --limit 5  # rehearsal
 ```
 
 **4.** Let it run:
@@ -51,14 +51,14 @@ Set `SYNC_INTERVAL_MINUTES=0` so the process exits after one sync, then schedule
 (Synology Task Scheduler, or `crontab -e`):
 
 ```cron
-*/15 * * * * docker compose -f /path/to/letterboxd-overseerr-sync/docker-compose.yml run --rm letterboxd-sync --once >> /path/to/sync.log 2>&1
+*/15 * * * * docker compose -f /path/to/watchlistrr/docker-compose.yml run --rm watchlistrr --once >> /path/to/sync.log 2>&1
 ```
 
 No Docker at all:
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-set -a && . ./.env && set +a && .venv/bin/python -m letterboxd_sync --once
+set -a && . ./.env && set +a && .venv/bin/python -m watchlistrr --once
 ```
 
 </details>
@@ -81,7 +81,7 @@ Environment variables — see [`.env.example`](.env.example).
 | `DRY_RUN` | `false` | Report what would happen, change nothing. |
 | `LIMIT` | `0` | Only process the first N films. `0` = no limit. |
 | `REQUEST_DELAY_SECONDS` | `1.0` | Politeness delay between Letterboxd page loads. |
-| `CACHE_PATH` | `/config/letterboxd-sync.db` | Where the "already synced" database lives. |
+| `CACHE_PATH` | `/config/watchlistrr.db` | Where the "already synced" database lives. |
 | `LOG_LEVEL` | `INFO` | `DEBUG` for the full story. |
 
 ### CLI flags
@@ -129,7 +129,7 @@ is public by opening it in a private browser window.
 
 **`Found no films on … The list may be private, or Letterboxd changed its markup`**
 If the list is public, Letterboxd changed its HTML — see `SLUG_PATTERNS` in
-`letterboxd_sync/letterboxd.py`; adding one regex there is usually the whole fix.
+`watchlistrr/letterboxd.py`; adding one regex there is usually the whole fix.
 
 **`Overseerr rejected the API key`**
 Regenerate it under Settings → General. Check `OVERSEERR_URL` has no trailing `/api/v1`.
@@ -144,7 +144,7 @@ generally land in Radarr anyway. Turn off **Enable Automatic Search** in
 **Settings → Services → Radarr** and search in batches instead.
 
 **Start over**
-Delete `config/letterboxd-sync.db`, or run with `--force`.
+Delete `config/watchlistrr.db`, or run with `--force`.
 
 </details>
 

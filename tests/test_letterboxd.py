@@ -1,6 +1,6 @@
 import os
 
-from letterboxd_sync.letterboxd import extract_slugs, looks_empty, parse_film_page
+from watchlistrr.letterboxd import extract_slugs, looks_empty, parse_film_page
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 

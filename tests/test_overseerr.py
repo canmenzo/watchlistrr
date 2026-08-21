@@ -1,6 +1,6 @@
 from fakes import FakeResponse, FakeSession
 
-from letterboxd_sync.overseerr import OverseerrClient, OverseerrError
+from watchlistrr.overseerr import OverseerrClient, OverseerrError
 
 
 def client(routes, **kwargs) -> OverseerrClient:

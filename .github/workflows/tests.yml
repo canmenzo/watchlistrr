@@ -19,12 +19,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -r requirements.txt pytest pyflakes
-      - run: python -m pyflakes letterboxd_sync tests
+      - run: python -m pyflakes watchlistrr tests
       - run: python -m pytest tests/ -q
 
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t letterboxd-sync:ci .
-      - run: docker run --rm letterboxd-sync:ci --version
+      - run: docker build -t watchlistrr:ci .
+      - run: docker run --rm watchlistrr:ci --version

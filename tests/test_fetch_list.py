@@ -1,6 +1,6 @@
 import pytest
 
-from letterboxd_sync.letterboxd import LetterboxdClient, ScrapeError
+from watchlistrr.letterboxd import LetterboxdClient, ScrapeError
 
 
 class FakeGetResponse:

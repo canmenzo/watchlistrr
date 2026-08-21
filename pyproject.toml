@@ -1,12 +1,12 @@
 [project]
-name = "letterboxd-overseerr-sync"
+name = "watchlistrr"
 version = "1.0.0"
-description = "Sync a Letterboxd watchlist into Seerr (formerly Overseerr)"
+description = "Watchlistrr - sync a Letterboxd watchlist into Seerr (formerly Overseerr)"
 requires-python = ">=3.10"
 dependencies = ["requests>=2.31,<3"]
 
 [project.scripts]
-letterboxd-sync = "letterboxd_sync.__main__:main"
+watchlistrr = "watchlistrr.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

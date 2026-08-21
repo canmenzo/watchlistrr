@@ -1,14 +1,14 @@
 services:
-  letterboxd-sync:
+  watchlistrr:
     build: .
     # Or, once you have built and pushed it to a registry:
-    # image: ghcr.io/canmenzo/letterboxd-overseerr-sync:latest
-    container_name: letterboxd-sync
+    # image: ghcr.io/canmenzo/watchlistrr:latest
+    container_name: watchlistrr
     env_file: .env
     # Run as your own user rather than root. `id $USER` gives you the numbers.
     # Make sure that user owns the config directory below:
     #   sudo chown -R 1000:1000 ./config
     user: "1000:1000"
     volumes:
-      - ./config:/config   # or an absolute path, e.g. /volume1/docker/letterboxd-sync/config
+      - ./config:/config   # or an absolute path, e.g. /volume1/docker/watchlistrr/config
     restart: unless-stopped
