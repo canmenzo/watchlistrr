@@ -32,20 +32,24 @@ class Stats:
     plex_pruned: int = 0
 
     def summary(self, cfg: Config) -> str:
-        lines = [
+        lines = []
+        if cfg.dry_run:
+            lines.append("DRY RUN - nothing was sent, nothing was changed")
+        lines.append(
             f"Letterboxd: {self.films_found} films, "
             f"{self.resolved} resolved to TMDB, {len(self.unresolved)} unresolved"
-        ]
+        )
+        verb = "would be requested" if cfg.dry_run else "requested"
         if cfg.sync_overseerr:
             lines.append(
-                f"Overseerr:  {self.overseerr_requested} requested, "
+                f"Overseerr:  {self.overseerr_requested} {verb}, "
                 f"{self.overseerr_already} already requested, "
                 f"{self.overseerr_available} already available, "
                 f"{self.overseerr_failed} failed"
             )
         if cfg.sync_plex:
             line = (
-                f"Plex:       {self.plex_added} added, "
+                f"Plex:       {self.plex_added} {'would be added' if cfg.dry_run else 'added'}, "
                 f"{self.plex_already} already there, "
                 f"{self.plex_not_found} not found on Plex, "
                 f"{self.plex_failed} failed"
