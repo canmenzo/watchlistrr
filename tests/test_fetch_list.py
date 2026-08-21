@@ -31,29 +31,32 @@ def client(session) -> LetterboxdClient:
 
 
 BASE = "https://letterboxd.com/dave/watchlist"
+# Page one is always requested with a trailing slash - without it Letterboxd
+# answers with a 403 bot challenge rather than a redirect.
+PAGE1 = f"{BASE}/"
 
 
 def test_single_short_page_stops_immediately():
-    session = FakeGetSession({BASE: FakeGetResponse(200, grid(["a", "b", "c"]))})
+    session = FakeGetSession({PAGE1: FakeGetResponse(200, grid(["a", "b", "c"]))})
     assert client(session).fetch_list(BASE) == ["a", "b", "c"]
-    assert session.requested == [BASE]
+    assert session.requested == [PAGE1]
 
 
 def test_pagination_walks_until_a_short_page():
     full = [f"f{i}" for i in range(28)]
     session = FakeGetSession({
-        BASE: FakeGetResponse(200, grid(full)),
+        PAGE1: FakeGetResponse(200, grid(full)),
         f"{BASE}/page/2/": FakeGetResponse(200, grid(["tail1", "tail2"])),
     })
     result = client(session).fetch_list(BASE)
     assert result == full + ["tail1", "tail2"]
-    assert session.requested == [BASE, f"{BASE}/page/2/"]
+    assert session.requested == [PAGE1, f"{BASE}/page/2/"]
 
 
 def test_pagination_stops_when_a_page_repeats_earlier_films():
     full = [f"f{i}" for i in range(28)]
     session = FakeGetSession({
-        BASE: FakeGetResponse(200, grid(full)),
+        PAGE1: FakeGetResponse(200, grid(full)),
         # Letterboxd clamps out-of-range pages back to the last page.
         f"{BASE}/page/2/": FakeGetResponse(200, grid(full)),
     })
@@ -63,7 +66,7 @@ def test_pagination_stops_when_a_page_repeats_earlier_films():
 def test_trailing_slash_in_the_configured_url_is_handled():
     full = [f"f{i}" for i in range(28)]
     session = FakeGetSession({
-        BASE: FakeGetResponse(200, grid(full)),
+        PAGE1: FakeGetResponse(200, grid(full)),
         f"{BASE}/page/2/": FakeGetResponse(200, grid(["z"])),
     })
     client(session).fetch_list(BASE + "/")
@@ -72,7 +75,7 @@ def test_trailing_slash_in_the_configured_url_is_handled():
 
 def test_an_empty_watchlist_is_not_an_error():
     page = '<html><body>Dave hasn&#039;t added any films to their watchlist yet.</body></html>'
-    session = FakeGetSession({BASE: FakeGetResponse(200, page)})
+    session = FakeGetSession({PAGE1: FakeGetResponse(200, page)})
     assert client(session).fetch_list(BASE) == []
 
 
@@ -83,14 +86,14 @@ def test_a_404_on_the_first_page_is_a_clear_error():
 
 
 def test_an_unparseable_first_page_raises_rather_than_reporting_zero_films():
-    session = FakeGetSession({BASE: FakeGetResponse(200, "<html><body>Just a Moment...</body></html>")})
+    session = FakeGetSession({PAGE1: FakeGetResponse(200, "<html><body>Just a Moment...</body></html>")})
     with pytest.raises(ScrapeError, match="changed its markup"):
         client(session).fetch_list(BASE)
 
 
 def test_max_pages_bounds_the_walk():
     full = [f"p{n}f{i}" for n in range(1, 4) for i in range(28)]
-    pages = {BASE: FakeGetResponse(200, grid(full[:28]))}
+    pages = {PAGE1: FakeGetResponse(200, grid(full[:28]))}
     for n in range(2, 6):
         pages[f"{BASE}/page/{n}/"] = FakeGetResponse(
             200, grid(full[28 * (n - 1):28 * n] or [f"extra{n}"])
@@ -98,13 +101,13 @@ def test_max_pages_bounds_the_walk():
     session = FakeGetSession(pages)
     lb = LetterboxdClient("ua", delay=0, timeout=5, max_pages=2, session=session)
     lb.fetch_list(BASE)
-    assert session.requested == [BASE, f"{BASE}/page/2/"]
+    assert session.requested == [PAGE1, f"{BASE}/page/2/"]
 
 
 def test_films_are_deduplicated_across_pages():
     page1 = [f"f{i}" for i in range(28)]
     session = FakeGetSession({
-        BASE: FakeGetResponse(200, grid(page1)),
+        PAGE1: FakeGetResponse(200, grid(page1)),
         f"{BASE}/page/2/": FakeGetResponse(200, grid(["f0", "f27", "new"])),
     })
     result = client(session).fetch_list(BASE)

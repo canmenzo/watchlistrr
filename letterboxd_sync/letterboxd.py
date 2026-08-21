@@ -219,7 +219,9 @@ class LetterboxdClient:
         seen: set[str] = set()
 
         for page_number in range(1, self.max_pages + 1):
-            url = list_url if page_number == 1 else f"{list_url}/page/{page_number}/"
+            # The trailing slash is not optional: Letterboxd's CDN answers the
+            # unslashed form with a 403 bot challenge instead of a redirect.
+            url = f"{list_url}/" if page_number == 1 else f"{list_url}/page/{page_number}/"
             response = self.get(url)
 
             if response.status_code == 404:
