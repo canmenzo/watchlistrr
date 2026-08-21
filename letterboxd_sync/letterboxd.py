@@ -212,8 +212,16 @@ class LetterboxdClient:
                 time.sleep(min(2 ** attempt, 30))
         raise ScrapeError(f"Could not fetch {url}: {last_error}")
 
-    def fetch_list(self, list_url: str) -> list[str]:
-        """Return every film slug on a Letterboxd list/watchlist, in list order."""
+    def fetch_list(self, list_url: str, known=None) -> list[str]:
+        """Return every film slug on a Letterboxd list/watchlist, in list order.
+
+        ``known`` is an optional ``slug -> bool`` predicate. Letterboxd orders a
+        watchlist newest-addition-first, so once a whole page contains nothing
+        but films we have already handled, everything below it is older still
+        and there is no reason to keep paging. That turns a routine sync into a
+        single request. The caller must not pass ``known`` when it needs the
+        complete list - pruning does.
+        """
         list_url = list_url.rstrip("/")
         slugs: list[str] = []
         seen: set[str] = set()
@@ -253,6 +261,11 @@ class LetterboxdClient:
                 slugs.append(slug)
             log.info("%s page %d: %d films (%d total)", list_url, page_number,
                      len(fresh), len(slugs))
+
+            if known is not None and all(known(s) for s in page_slugs):
+                log.info("%s page %d holds nothing new - stopping here", list_url,
+                         page_number)
+                break
 
             # A short page means we've reached the end of the list.
             if len(page_slugs) < 20:

@@ -113,3 +113,40 @@ def test_films_are_deduplicated_across_pages():
     result = client(session).fetch_list(BASE)
     assert result == page1 + ["new"]
     assert len(result) == len(set(result))
+
+
+def test_early_stop_when_a_whole_page_is_already_known():
+    page1 = [f"f{i}" for i in range(28)]
+    session = FakeGetSession({
+        PAGE1: FakeGetResponse(200, grid(page1)),
+        f"{BASE}/page/2/": FakeGetResponse(200, grid([f"old{i}" for i in range(28)])),
+    })
+    result = client(session).fetch_list(BASE, known=lambda s: True)
+    assert result == page1
+    assert session.requested == [PAGE1]
+
+
+def test_early_stop_keeps_paging_while_a_page_holds_something_new():
+    page1 = [f"f{i}" for i in range(28)]
+    page2 = [f"g{i}" for i in range(28)]
+    session = FakeGetSession({
+        PAGE1: FakeGetResponse(200, grid(page1)),
+        f"{BASE}/page/2/": FakeGetResponse(200, grid(page2)),
+        f"{BASE}/page/3/": FakeGetResponse(200, grid([f"h{i}" for i in range(28)])),
+    })
+    # Only the very first film is new, but that is enough to read page 2; page 2
+    # is entirely known, so page 3 is never fetched.
+    known = lambda s: s != "f0"          # noqa: E731
+    result = client(session).fetch_list(BASE, known=known)
+    assert result == page1 + page2
+    assert session.requested == [PAGE1, f"{BASE}/page/2/"]
+
+
+def test_without_the_known_predicate_the_whole_list_is_walked():
+    page1 = [f"f{i}" for i in range(28)]
+    session = FakeGetSession({
+        PAGE1: FakeGetResponse(200, grid(page1)),
+        f"{BASE}/page/2/": FakeGetResponse(200, grid(["tail"])),
+    })
+    assert client(session).fetch_list(BASE) == page1 + ["tail"]
+    assert session.requested == [PAGE1, f"{BASE}/page/2/"]

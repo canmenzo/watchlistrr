@@ -16,8 +16,10 @@ class FakeLetterboxd:
     def __init__(self, slugs, **_kwargs):
         self.slugs = slugs
         self.fetched: list[str] = []
+        self.known_arg = "unset"
 
-    def fetch_list(self, _url):
+    def fetch_list(self, _url, known=None):
+        self.known_arg = known
         return list(self.slugs)
 
     def fetch_film(self, slug):
@@ -360,3 +362,39 @@ def test_limit_never_causes_the_prune_step_to_delete_the_remainder(tmp_path, pat
 
     assert stats.plex_pruned == 0
     assert FakePlex.instances[0].removed == []
+
+
+def test_early_stop_is_disabled_when_it_would_break_pruning(tmp_path, monkeypatch):
+    """A partial list would make the prune step delete everything below the cut."""
+    client = FakeLetterboxd(["parasite-2019"])
+    monkeypatch.setattr(sync_module, "LetterboxdClient", lambda **kw: client)
+
+    cfg = Config(lists=["https://letterboxd.com/dave/watchlist"], target="plex",
+                 plex_token="t", prune_plex=True,
+                 cache_path=str(tmp_path / "c.db"))
+    with Cache(cfg.cache_path) as cache:
+        sync_module.collect_slugs(cfg, client, cache, force=False)
+    assert client.known_arg is None
+
+
+def test_force_disables_the_early_stop(tmp_path):
+    client = FakeLetterboxd(["parasite-2019"])
+    cfg = Config(lists=["https://letterboxd.com/dave/watchlist"],
+                 overseerr_url="http://nas:5055", overseerr_api_key="k",
+                 cache_path=str(tmp_path / "c.db"))
+    with Cache(cfg.cache_path) as cache:
+        sync_module.collect_slugs(cfg, client, cache, force=True)
+    assert client.known_arg is None
+
+
+def test_a_routine_sync_passes_the_known_predicate(tmp_path):
+    client = FakeLetterboxd(["parasite-2019"])
+    cfg = Config(lists=["https://letterboxd.com/dave/watchlist"],
+                 overseerr_url="http://nas:5055", overseerr_api_key="k",
+                 cache_path=str(tmp_path / "c.db"))
+    with Cache(cfg.cache_path) as cache:
+        sync_module.collect_slugs(cfg, client, cache, force=False)
+        assert client.known_arg is not None
+        assert client.known_arg("parasite-2019") is False
+        cache.mark_synced("parasite-2019", "overseerr", "496243")
+        assert client.known_arg("parasite-2019") is True

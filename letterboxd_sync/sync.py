@@ -36,7 +36,7 @@ class Stats:
         if cfg.dry_run:
             lines.append("DRY RUN - nothing was sent, nothing was changed")
         lines.append(
-            f"Letterboxd: {self.films_found} films, "
+            f"Letterboxd: {self.films_found} films read, "
             f"{self.resolved} resolved to TMDB, {len(self.unresolved)} unresolved"
         )
         verb = "would be requested" if cfg.dry_run else "requested"
@@ -60,12 +60,22 @@ class Stats:
         return "\n".join(lines)
 
 
-def collect_slugs(cfg: Config, client: LetterboxdClient) -> list[str]:
+def collect_slugs(cfg: Config, client: LetterboxdClient, cache: Cache,
+                  force: bool = False) -> list[str]:
+    targets = [t for t in ("overseerr", "plex")
+               if (t == "overseerr" and cfg.sync_overseerr) or (t == "plex" and cfg.sync_plex)]
+
+    def known(slug: str) -> bool:
+        return all(cache.is_synced(slug, target) for target in targets)
+
+    # Pruning compares against the whole list, so it cannot stop early.
+    stop_early = not force and not cfg.prune_plex
+
     slugs: list[str] = []
     seen: set[str] = set()
     for list_url in cfg.lists:
         log.info("Reading %s", list_url)
-        for slug in client.fetch_list(list_url):
+        for slug in client.fetch_list(list_url, known=known if stop_early else None):
             if slug not in seen:
                 seen.add(slug)
                 slugs.append(slug)
@@ -241,7 +251,7 @@ def run_once(cfg: Config, cache: Cache, force: bool = False) -> Stats:
         base=cfg.letterboxd_base,
     )
 
-    all_slugs = collect_slugs(cfg, client)
+    all_slugs = collect_slugs(cfg, client, cache, force=force)
     stats.films_found = len(all_slugs)
     slugs = all_slugs
     if cfg.limit:

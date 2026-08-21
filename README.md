@@ -133,6 +133,10 @@ Everything is environment variables — see [`.env.example`](.env.example).
 1. **Read the watchlist.** Fetches `letterboxd.com/<user>/watchlist/`, walking pages until
    it runs out. The parser accepts several generations of Letterboxd markup
    (`data-film-slug`, `data-item-slug`, `data-target-link`) and falls back to poster links.
+   Letterboxd orders a watchlist newest-addition-first, so once a whole page contains
+   nothing but films already handled, paging stops — a routine sync is **one request**, not
+   one per page. That's what makes a short `SYNC_INTERVAL_MINUTES` reasonable. `--force`
+   walks the entire list.
 2. **Resolve each film to a TMDB ID** by opening its Letterboxd page once and reading the
    `data-tmdb-id` / TMDb link. Everything downstream is keyed on a real ID, not a title.
 3. **Cache.** Slug → TMDB ID is stored permanently in SQLite, so only genuinely new films
