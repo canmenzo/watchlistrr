@@ -8,7 +8,7 @@ from letterboxd_sync.config import ConfigError, load_config, normalise_list_ref
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
     for key in list(os.environ):
-        if key.split("_")[0] in ("LETTERBOXD", "SYNC", "OVERSEERR", "PLEX", "DRY",
+        if key.split("_")[0] in ("LETTERBOXD", "SYNC", "OVERSEERR", "DRY",
                                  "CACHE", "REQUEST", "MAX", "HTTP", "USER", "LOG",
                                  "LIMIT", "PRUNE"):
             monkeypatch.delenv(key, raising=False)
@@ -62,7 +62,6 @@ def test_load_config_overseerr_happy_path(monkeypatch):
     cfg = load_config()
     assert cfg.lists == ["https://letterboxd.com/dave/watchlist"]
     assert cfg.overseerr_url == "http://nas:5055"
-    assert cfg.sync_overseerr and not cfg.sync_plex
 
 
 def test_load_config_requires_overseerr_credentials(monkeypatch):
@@ -71,45 +70,12 @@ def test_load_config_requires_overseerr_credentials(monkeypatch):
         load_config()
 
 
-def test_load_config_requires_a_plex_token(monkeypatch):
-    monkeypatch.setenv("LETTERBOXD_USERNAME", "dave")
-    monkeypatch.setenv("SYNC_TARGET", "plex")
-    with pytest.raises(ConfigError, match="PLEX_TOKEN"):
-        load_config()
-
-
-def test_load_config_rejects_an_unknown_target(monkeypatch):
-    monkeypatch.setenv("LETTERBOXD_USERNAME", "dave")
-    monkeypatch.setenv("SYNC_TARGET", "trakt")
-    with pytest.raises(ConfigError, match="SYNC_TARGET"):
-        load_config()
-
-
-def test_load_config_both_targets(monkeypatch):
-    monkeypatch.setenv("LETTERBOXD_USERNAME", "dave")
-    monkeypatch.setenv("SYNC_TARGET", "both")
-    monkeypatch.setenv("OVERSEERR_URL", "http://nas:5055")
-    monkeypatch.setenv("OVERSEERR_API_KEY", "secret")
-    monkeypatch.setenv("PLEX_TOKEN", "tok")
-    cfg = load_config()
-    assert cfg.sync_overseerr and cfg.sync_plex
-
-
-def test_prune_requires_the_plex_target(monkeypatch):
-    monkeypatch.setenv("LETTERBOXD_USERNAME", "dave")
-    monkeypatch.setenv("OVERSEERR_URL", "http://nas:5055")
-    monkeypatch.setenv("OVERSEERR_API_KEY", "secret")
-    monkeypatch.setenv("PRUNE_PLEX_WATCHLIST", "true")
-    with pytest.raises(ConfigError, match="PRUNE_PLEX_WATCHLIST"):
-        load_config()
-
-
 def test_multiple_lists_are_deduplicated(monkeypatch):
     monkeypatch.setenv("LETTERBOXD_USERNAME", "dave")
     monkeypatch.setenv("LETTERBOXD_LISTS",
                        "dave/watchlist, dave/list/noir , https://letterboxd.com/dave/watchlist/")
-    monkeypatch.setenv("SYNC_TARGET", "plex")
-    monkeypatch.setenv("PLEX_TOKEN", "tok")
+    monkeypatch.setenv("OVERSEERR_URL", "http://nas:5055")
+    monkeypatch.setenv("OVERSEERR_API_KEY", "secret")
     cfg = load_config()
     assert cfg.lists == [
         "https://letterboxd.com/dave/watchlist",
@@ -119,8 +85,8 @@ def test_multiple_lists_are_deduplicated(monkeypatch):
 
 def test_numeric_env_var_validation(monkeypatch):
     monkeypatch.setenv("LETTERBOXD_USERNAME", "dave")
-    monkeypatch.setenv("SYNC_TARGET", "plex")
-    monkeypatch.setenv("PLEX_TOKEN", "tok")
+    monkeypatch.setenv("OVERSEERR_URL", "http://nas:5055")
+    monkeypatch.setenv("OVERSEERR_API_KEY", "secret")
     monkeypatch.setenv("SYNC_INTERVAL_MINUTES", "not-a-number")
     with pytest.raises(ConfigError, match="whole number"):
         load_config()

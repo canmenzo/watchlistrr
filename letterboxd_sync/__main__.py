@@ -13,7 +13,6 @@ from .cache import Cache
 from .config import Config, ConfigError, load_config
 from .letterboxd import LetterboxdClient, ScrapeError
 from .overseerr import OverseerrClient, OverseerrError
-from .plexwatchlist import PlexError, PlexWatchlist
 from .sync import run_once
 
 log = logging.getLogger("letterboxd_sync")
@@ -35,7 +34,6 @@ def setup_logging(level: str) -> None:
         stream=sys.stdout,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("plexapi").setLevel(logging.WARNING)
 
 
 def check(cfg: Config) -> int:
@@ -55,30 +53,17 @@ def check(cfg: Config) -> int:
             preview = ", ".join(slugs[:3]) or "(empty)"
             print(f"  OK   {list_url} - first page reachable, e.g. {preview}")
 
-    if cfg.sync_overseerr:
-        print("Overseerr/Seerr:")
-        try:
-            version = OverseerrClient(
-                cfg.overseerr_url, cfg.overseerr_api_key,
-                user_id=cfg.overseerr_user_id, timeout=cfg.http_timeout,
-            ).ping()
-        except OverseerrError as exc:
-            print(f"  FAIL {cfg.overseerr_url}\n       {exc}")
-            ok = False
-        else:
-            print(f"  OK   {cfg.overseerr_url} - version {version}")
-
-    if cfg.sync_plex:
-        print("Plex:")
-        try:
-            plex = PlexWatchlist(cfg.plex_token, timeout=cfg.http_timeout)
-            count = len(plex.watchlist_keys())
-        except PlexError as exc:
-            print(f"  FAIL plex.tv\n       {exc}")
-            ok = False
-        else:
-            print(f"  OK   plex.tv - signed in as {plex.username}, "
-                  f"{count} item(s) on the watchlist")
+    print("Seerr:")
+    try:
+        version = OverseerrClient(
+            cfg.overseerr_url, cfg.overseerr_api_key,
+            user_id=cfg.overseerr_user_id, timeout=cfg.http_timeout,
+        ).ping()
+    except OverseerrError as exc:
+        print(f"  FAIL {cfg.overseerr_url}\n       {exc}")
+        ok = False
+    else:
+        print(f"  OK   {cfg.overseerr_url} - version {version}")
 
     print("\nAll checks passed." if ok else "\nSome checks failed - see above.")
     return 0 if ok else 1
@@ -87,8 +72,7 @@ def check(cfg: Config) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="letterboxd-sync",
-        description="Sync a Letterboxd watchlist into Overseerr/Seerr and/or the "
-                    "Plex watchlist.",
+        description="Sync a Letterboxd watchlist into Seerr (formerly Overseerr).",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--once", action="store_true",
@@ -132,8 +116,8 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGINT, _handle_signal)
 
     interval = 0 if args.once else max(0, cfg.interval_minutes)
-    log.info("letterboxd-sync %s starting (target=%s, dry_run=%s, %s)",
-             __version__, cfg.target, cfg.dry_run,
+    log.info("letterboxd-sync %s starting (dry_run=%s, %s)",
+             __version__, cfg.dry_run,
              f"every {interval} min" if interval else "single run")
 
     exit_code = 0
@@ -145,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
         except ScrapeError as exc:
             log.error("Letterboxd error: %s", exc)
             exit_code = 1
-        except (ConfigError, OverseerrError, PlexError) as exc:
+        except (ConfigError, OverseerrError) as exc:
             log.error("%s", exc)
             exit_code = 1
         except Exception:

@@ -1,7 +1,7 @@
 """End-to-end run of the real CLI against stub Letterboxd and Overseerr servers.
 
 This exercises the actual HTTP stack, parser, pagination, Overseerr client and
-cache - everything except plex.tv, which has no offline stand-in.
+cache - the whole path, against stub HTTP servers.
 """
 
 import json
@@ -111,7 +111,6 @@ def stubs(monkeypatch, tmp_path):
     monkeypatch.setenv("LETTERBOXD_BASE_URL", lb_url)
     monkeypatch.setenv("OVERSEERR_URL", ov_url)
     monkeypatch.setenv("OVERSEERR_API_KEY", "test-key")
-    monkeypatch.setenv("SYNC_TARGET", "overseerr")
     monkeypatch.setenv("CACHE_PATH", str(tmp_path / "cache.db"))
     monkeypatch.setenv("REQUEST_DELAY_SECONDS", "0")
     monkeypatch.setenv("LOG_LEVEL", "INFO")

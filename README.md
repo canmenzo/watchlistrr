@@ -84,10 +84,6 @@ Environment variables — see [`.env.example`](.env.example).
 | `CACHE_PATH` | `/config/letterboxd-sync.db` | Where the "already synced" database lives. |
 | `LOG_LEVEL` | `INFO` | `DEBUG` for the full story. |
 
-`SYNC_TARGET` also accepts `plex` or `both`, which writes to your Plex watchlist instead of
-(or as well as) requesting in Seerr. It needs `PLEX_TOKEN`, and it is not the path this
-README documents.
-
 ### CLI flags
 
 ```
@@ -161,7 +157,7 @@ pip install -r requirements.txt pytest
 python -m pytest tests/ -q
 ```
 
-108 tests: the parser against fixtures of old and current Letterboxd markup, pagination and
+74 tests: the parser against fixtures of old and current Letterboxd markup, pagination and
 early-stop, config validation, the cache, the Seerr client, and a full end-to-end run of the
 real CLI against stub HTTP servers.
 

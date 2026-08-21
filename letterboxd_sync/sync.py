@@ -1,4 +1,4 @@
-"""Orchestration: scrape -> resolve -> request/watchlist -> prune."""
+"""Orchestration: read the watchlist -> resolve to TMDB ids -> request in Seerr."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from .cache import Cache
 from .config import Config
 from .letterboxd import Film, LetterboxdClient, ScrapeError
 from .overseerr import OverseerrClient, OverseerrError
-from .plexwatchlist import PlexError, PlexWatchlist
 
 log = logging.getLogger(__name__)
 
@@ -25,12 +24,6 @@ class Stats:
     overseerr_available: int = 0
     overseerr_failed: int = 0
 
-    plex_added: int = 0
-    plex_already: int = 0
-    plex_not_found: int = 0
-    plex_failed: int = 0
-    plex_pruned: int = 0
-
     def summary(self, cfg: Config) -> str:
         lines = []
         if cfg.dry_run:
@@ -40,42 +33,25 @@ class Stats:
             f"{self.resolved} resolved to TMDB, {len(self.unresolved)} unresolved"
         )
         verb = "would be requested" if cfg.dry_run else "requested"
-        if cfg.sync_overseerr:
-            lines.append(
-                f"Overseerr:  {self.overseerr_requested} {verb}, "
-                f"{self.overseerr_already} already requested, "
-                f"{self.overseerr_available} already available, "
-                f"{self.overseerr_failed} failed"
-            )
-        if cfg.sync_plex:
-            line = (
-                f"Plex:       {self.plex_added} {'would be added' if cfg.dry_run else 'added'}, "
-                f"{self.plex_already} already there, "
-                f"{self.plex_not_found} not found on Plex, "
-                f"{self.plex_failed} failed"
-            )
-            if cfg.prune_plex:
-                line += f", {self.plex_pruned} pruned"
-            lines.append(line)
+        lines.append(
+            f"Seerr:      {self.overseerr_requested} {verb}, "
+            f"{self.overseerr_already} already requested, "
+            f"{self.overseerr_available} already available, "
+            f"{self.overseerr_failed} failed"
+        )
         return "\n".join(lines)
 
 
 def collect_slugs(cfg: Config, client: LetterboxdClient, cache: Cache,
                   force: bool = False) -> list[str]:
-    targets = [t for t in ("overseerr", "plex")
-               if (t == "overseerr" and cfg.sync_overseerr) or (t == "plex" and cfg.sync_plex)]
-
     def known(slug: str) -> bool:
-        return all(cache.is_synced(slug, target) for target in targets)
-
-    # Pruning compares against the whole list, so it cannot stop early.
-    stop_early = not force and not cfg.prune_plex
+        return cache.is_synced(slug, "overseerr")
 
     slugs: list[str] = []
     seen: set[str] = set()
     for list_url in cfg.lists:
         log.info("Reading %s", list_url)
-        for slug in client.fetch_list(list_url, known=known if stop_early else None):
+        for slug in client.fetch_list(list_url, known=None if force else known):
             if slug not in seen:
                 seen.add(slug)
                 slugs.append(slug)
@@ -160,87 +136,6 @@ def sync_overseerr(cfg: Config, cache: Cache, films: list[Film], stats: Stats,
             stats.overseerr_failed += 1
 
 
-def sync_plex(cfg: Config, cache: Cache, films: list[Film], all_slugs: list[str],
-              stats: Stats, force: bool = False) -> None:
-    plex = PlexWatchlist(cfg.plex_token, timeout=cfg.http_timeout)
-    log.info("Connected to plex.tv as %s", plex.username)
-
-    pending = [f for f in films if force or not cache.is_synced(f.slug, "plex")]
-    log.info("%d film(s) to push to the Plex watchlist (%d already handled)",
-             len(pending), len(films) - len(pending))
-
-    for film in pending:
-        if cfg.dry_run:
-            log.info("[dry-run] would add %s (tmdb:%s) to the Plex watchlist",
-                     film.label, film.tmdb_id)
-            stats.plex_added += 1
-            continue
-
-        item = plex.find(film)
-        if item is None:
-            log.warning("No confident Plex Discover match for %s (tmdb:%s)",
-                        film.label, film.tmdb_id)
-            stats.plex_not_found += 1
-            continue
-
-        outcome, detail = plex.add(item)
-        if outcome == "added":
-            log.info("Watchlisted %s", film.label)
-            stats.plex_added += 1
-            cache.mark_synced(film.slug, "plex", str(item.ratingKey))
-        elif outcome == "already":
-            log.info("Skipped %s - %s", film.label, detail)
-            stats.plex_already += 1
-            cache.mark_synced(film.slug, "plex", str(item.ratingKey))
-        else:
-            log.error("Could not watchlist %s: %s", film.label, detail)
-            stats.plex_failed += 1
-
-    if cfg.prune_plex:
-        if cfg.limit:
-            log.warning("Skipping the prune step because LIMIT is set - pruning "
-                        "against a truncated watchlist would remove good entries")
-        else:
-            prune_plex(cfg, cache, plex, all_slugs, stats)
-
-
-def prune_plex(cfg: Config, cache: Cache, plex: PlexWatchlist, all_slugs: list[str],
-               stats: Stats) -> None:
-    """Remove watchlist entries this tool added that left the Letterboxd list.
-
-    Only entries recorded in our own cache are ever considered, so anything you
-    watchlisted by hand in Plex is untouched.
-    """
-    current = set(all_slugs)
-    stale = {
-        slug: key
-        for slug, key in cache.synced_slugs("plex").items()
-        if slug not in current and key
-    }
-    if not stale:
-        return
-
-    log.info("Pruning %d film(s) that are no longer on Letterboxd", len(stale))
-    watchlist = plex.watchlist_keys()
-
-    for slug, rating_key in stale.items():
-        item = watchlist.get(str(rating_key))
-        if item is None:
-            cache.unmark_synced(slug, "plex")
-            continue
-        if cfg.dry_run:
-            log.info("[dry-run] would remove %s from the Plex watchlist", slug)
-            stats.plex_pruned += 1
-            continue
-        outcome, detail = plex.remove(item)
-        if outcome in ("removed", "already"):
-            log.info("Removed %s from the Plex watchlist", slug)
-            stats.plex_pruned += 1
-            cache.unmark_synced(slug, "plex")
-        else:
-            log.error("Could not remove %s: %s", slug, detail)
-
-
 def run_once(cfg: Config, cache: Cache, force: bool = False) -> Stats:
     stats = Stats()
     client = LetterboxdClient(
@@ -251,11 +146,10 @@ def run_once(cfg: Config, cache: Cache, force: bool = False) -> Stats:
         base=cfg.letterboxd_base,
     )
 
-    all_slugs = collect_slugs(cfg, client, cache, force=force)
-    stats.films_found = len(all_slugs)
-    slugs = all_slugs
+    slugs = collect_slugs(cfg, client, cache, force=force)
+    stats.films_found = len(slugs)
     if cfg.limit:
-        slugs = all_slugs[: cfg.limit]
+        slugs = slugs[: cfg.limit]
         log.info("LIMIT is set - only processing the first %d film(s)", len(slugs))
     if not slugs:
         log.info("Nothing on the watchlist, nothing to do")
@@ -263,12 +157,6 @@ def run_once(cfg: Config, cache: Cache, force: bool = False) -> Stats:
 
     films = resolve_films(slugs, client, cache, stats)
 
-    if cfg.sync_overseerr:
-        sync_overseerr(cfg, cache, films, stats, force=force)
-    if cfg.sync_plex:
-        try:
-            sync_plex(cfg, cache, films, all_slugs, stats, force=force)
-        except PlexError as exc:
-            log.error("Plex sync failed: %s", exc)
+    sync_overseerr(cfg, cache, films, stats, force=force)
 
     return stats

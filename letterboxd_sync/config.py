@@ -10,8 +10,6 @@ DEFAULT_USER_AGENT = (
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
-VALID_TARGETS = ("overseerr", "plex", "both")
-
 
 class ConfigError(Exception):
     """Raised when the environment is missing or contradicts itself."""
@@ -51,15 +49,11 @@ def _str(name: str, default: str = "") -> str:
 @dataclass
 class Config:
     lists: list[str] = field(default_factory=list)
-    target: str = "overseerr"
 
     overseerr_url: str = ""
     overseerr_api_key: str = ""
     overseerr_user_id: int | None = None
     overseerr_is_4k: bool = False
-
-    plex_token: str = ""
-    prune_plex: bool = False
 
     interval_minutes: int = 0
     dry_run: bool = False
@@ -72,14 +66,6 @@ class Config:
     log_level: str = "INFO"
     # Override the Letterboxd origin. Only useful for testing against a stub.
     letterboxd_base: str = "https://letterboxd.com"
-
-    @property
-    def sync_overseerr(self) -> bool:
-        return self.target in ("overseerr", "both")
-
-    @property
-    def sync_plex(self) -> bool:
-        return self.target in ("plex", "both")
 
 
 def normalise_list_ref(ref: str) -> str:
@@ -125,19 +111,10 @@ def load_config() -> Config:
             seen.add(url)
             cfg.lists.append(url)
 
-    cfg.target = _str("SYNC_TARGET", "overseerr").lower()
-    if cfg.target not in VALID_TARGETS:
-        raise ConfigError(
-            f"SYNC_TARGET must be one of {', '.join(VALID_TARGETS)}, got {cfg.target!r}"
-        )
-
     cfg.overseerr_url = _str("OVERSEERR_URL").rstrip("/")
     cfg.overseerr_api_key = _str("OVERSEERR_API_KEY")
     cfg.overseerr_user_id = _int("OVERSEERR_USER_ID", 0) or None
     cfg.overseerr_is_4k = _bool("OVERSEERR_IS_4K", False)
-
-    cfg.plex_token = _str("PLEX_TOKEN")
-    cfg.prune_plex = _bool("PRUNE_PLEX_WATCHLIST", False)
 
     cfg.interval_minutes = _int("SYNC_INTERVAL_MINUTES", 0)
     cfg.dry_run = _bool("DRY_RUN", False)
@@ -150,14 +127,9 @@ def load_config() -> Config:
     cfg.log_level = _str("LOG_LEVEL", "INFO").upper()
     cfg.letterboxd_base = _str("LETTERBOXD_BASE_URL", "https://letterboxd.com").rstrip("/")
 
-    if cfg.sync_overseerr:
-        if not cfg.overseerr_url:
-            raise ConfigError("OVERSEERR_URL is required when SYNC_TARGET includes overseerr")
-        if not cfg.overseerr_api_key:
-            raise ConfigError("OVERSEERR_API_KEY is required when SYNC_TARGET includes overseerr")
-    if cfg.sync_plex and not cfg.plex_token:
-        raise ConfigError("PLEX_TOKEN is required when SYNC_TARGET includes plex")
-    if cfg.prune_plex and not cfg.sync_plex:
-        raise ConfigError("PRUNE_PLEX_WATCHLIST requires SYNC_TARGET to include plex")
+    if not cfg.overseerr_url:
+        raise ConfigError("OVERSEERR_URL is required")
+    if not cfg.overseerr_api_key:
+        raise ConfigError("OVERSEERR_API_KEY is required")
 
     return cfg

@@ -1,3 +1,3 @@
-"""Sync a Letterboxd watchlist into Overseerr/Jellyseerr/Seerr and/or the Plex watchlist."""
+"""Sync a Letterboxd watchlist into Seerr (formerly Overseerr)."""
 
 __version__ = "1.0.0"

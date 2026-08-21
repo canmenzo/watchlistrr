@@ -43,44 +43,9 @@ class FakeOverseerr:
         return self.outcomes.get(tmdb_id, ("requested", "request created"))
 
 
-class FakePlexItem:
-    def __init__(self, rating_key):
-        self.ratingKey = rating_key
-
-
-class FakePlex:
-    instances: list["FakePlex"] = []
-
-    def __init__(self, *_args, **_kwargs):
-        self.added: list[Film] = []
-        self.removed: list[str] = []
-        self.watchlist: dict[str, FakePlexItem] = {}
-        self.unmatched: set[str] = set()
-        FakePlex.instances.append(self)
-
-    username = "tester"
-
-    def find(self, film):
-        if film.slug in self.unmatched:
-            return None
-        return FakePlexItem(f"rk-{film.slug}")
-
-    def add(self, item):
-        self.added.append(item.ratingKey)
-        return ("added", "added to the Plex watchlist")
-
-    def watchlist_keys(self):
-        return dict(self.watchlist)
-
-    def remove(self, item):
-        self.removed.append(item.ratingKey)
-        return ("removed", "removed")
-
-
 @pytest.fixture(autouse=True)
 def reset_fakes():
     FakeOverseerr.instances.clear()
-    FakePlex.instances.clear()
 
 
 @pytest.fixture
@@ -89,7 +54,6 @@ def patched(monkeypatch):
         lb = FakeLetterboxd(slugs)
         monkeypatch.setattr(sync_module, "LetterboxdClient", lambda **kw: lb)
         monkeypatch.setattr(sync_module, "OverseerrClient", FakeOverseerr)
-        monkeypatch.setattr(sync_module, "PlexWatchlist", FakePlex)
         return lb
     return install
 
@@ -97,10 +61,8 @@ def patched(monkeypatch):
 def make_config(tmp_path, **overrides) -> Config:
     cfg = Config(
         lists=["https://letterboxd.com/dave/watchlist"],
-        target="overseerr",
         overseerr_url="http://nas:5055",
         overseerr_api_key="key",
-        plex_token="tok",
         cache_path=str(tmp_path / "cache.db"),
         request_delay=0,
     )
@@ -232,150 +194,7 @@ def test_limit_caps_the_number_of_films(tmp_path, patched):
     assert stats.overseerr_requested == 1
 
 
-# -- Plex target -------------------------------------------------------------
-
-def test_plex_target_watchlists_each_film(tmp_path, patched):
-    patched(["parasite-2019", "anora"])
-    cfg = make_config(tmp_path, target="plex")
-    with Cache(cfg.cache_path) as cache:
-        stats = sync_module.run_once(cfg, cache)
-
-    assert stats.plex_added == 2
-    assert FakePlex.instances[0].added == ["rk-parasite-2019", "rk-anora"]
-
-
-def test_unmatched_films_are_counted_separately(tmp_path, patched):
-    patched(["parasite-2019", "anora"])
-    cfg = make_config(tmp_path, target="plex")
-    with Cache(cfg.cache_path) as cache:
-        FakePlex.instances.clear()
-        original_init = FakePlex.__init__
-
-        def picky_init(self, *args, **kwargs):
-            original_init(self, *args, **kwargs)
-            self.unmatched = {"anora"}
-
-        FakePlex.__init__ = picky_init
-        try:
-            stats = sync_module.run_once(cfg, cache)
-        finally:
-            FakePlex.__init__ = original_init
-
-    assert stats.plex_added == 1
-    assert stats.plex_not_found == 1
-
-
-def test_both_targets_run(tmp_path, patched):
-    patched(["parasite-2019"])
-    cfg = make_config(tmp_path, target="both")
-    with Cache(cfg.cache_path) as cache:
-        stats = sync_module.run_once(cfg, cache)
-
-    assert stats.overseerr_requested == 1
-    assert stats.plex_added == 1
-
-
-def test_pruning_only_removes_films_this_tool_added(tmp_path, patched):
-    cfg = make_config(tmp_path, target="plex", prune_plex=True)
-
-    patched(["parasite-2019", "anora"])
-    with Cache(cfg.cache_path) as cache:
-        sync_module.run_once(cfg, cache)
-
-    # Anora leaves the Letterboxd watchlist; a hand-added film is also present.
-    patched(["parasite-2019"])
-    FakePlex.instances.clear()
-    original_init = FakePlex.__init__
-
-    def stocked_init(self, *args, **kwargs):
-        original_init(self, *args, **kwargs)
-        self.watchlist = {
-            "rk-parasite-2019": FakePlexItem("rk-parasite-2019"),
-            "rk-anora": FakePlexItem("rk-anora"),
-            "rk-hand-added": FakePlexItem("rk-hand-added"),
-        }
-
-    FakePlex.__init__ = stocked_init
-    try:
-        with Cache(cfg.cache_path) as cache:
-            stats = sync_module.run_once(cfg, cache)
-            assert cache.is_synced("anora", "plex") is False
-    finally:
-        FakePlex.__init__ = original_init
-
-    assert stats.plex_pruned == 1
-    assert FakePlex.instances[0].removed == ["rk-anora"]
-
-
-def test_pruning_is_off_by_default(tmp_path, patched):
-    cfg = make_config(tmp_path, target="plex")
-    patched(["parasite-2019", "anora"])
-    with Cache(cfg.cache_path) as cache:
-        sync_module.run_once(cfg, cache)
-
-    patched(["parasite-2019"])
-    with Cache(cfg.cache_path) as cache:
-        stats = sync_module.run_once(cfg, cache)
-
-    assert stats.plex_pruned == 0
-    assert FakePlex.instances[-1].removed == []
-
-
-def test_summary_mentions_only_the_active_targets(tmp_path, patched):
-    patched(["parasite-2019"])
-    cfg = make_config(tmp_path, target="plex")
-    with Cache(cfg.cache_path) as cache:
-        stats = sync_module.run_once(cfg, cache)
-
-    text = stats.summary(cfg)
-    assert "Plex:" in text and "Overseerr:" not in text
-
-
-def test_limit_never_causes_the_prune_step_to_delete_the_remainder(tmp_path, patched):
-    """Regression: pruning must compare against the full watchlist, not the LIMIT slice."""
-    cfg = make_config(tmp_path, target="plex", prune_plex=True)
-
-    patched(["parasite-2019", "anora"])
-    with Cache(cfg.cache_path) as cache:
-        sync_module.run_once(cfg, cache)
-
-    # Nothing left Letterboxd, but LIMIT now hides the second film.
-    cfg.limit = 1
-    patched(["parasite-2019", "anora"])
-    FakePlex.instances.clear()
-    original_init = FakePlex.__init__
-
-    def stocked_init(self, *args, **kwargs):
-        original_init(self, *args, **kwargs)
-        self.watchlist = {
-            "rk-parasite-2019": FakePlexItem("rk-parasite-2019"),
-            "rk-anora": FakePlexItem("rk-anora"),
-        }
-
-    FakePlex.__init__ = stocked_init
-    try:
-        with Cache(cfg.cache_path) as cache:
-            stats = sync_module.run_once(cfg, cache)
-            assert cache.is_synced("anora", "plex") is True
-    finally:
-        FakePlex.__init__ = original_init
-
-    assert stats.plex_pruned == 0
-    assert FakePlex.instances[0].removed == []
-
-
-def test_early_stop_is_disabled_when_it_would_break_pruning(tmp_path, monkeypatch):
-    """A partial list would make the prune step delete everything below the cut."""
-    client = FakeLetterboxd(["parasite-2019"])
-    monkeypatch.setattr(sync_module, "LetterboxdClient", lambda **kw: client)
-
-    cfg = Config(lists=["https://letterboxd.com/dave/watchlist"], target="plex",
-                 plex_token="t", prune_plex=True,
-                 cache_path=str(tmp_path / "c.db"))
-    with Cache(cfg.cache_path) as cache:
-        sync_module.collect_slugs(cfg, client, cache, force=False)
-    assert client.known_arg is None
-
+# -- early stop ---------------------------------------------------------------
 
 def test_force_disables_the_early_stop(tmp_path):
     client = FakeLetterboxd(["parasite-2019"])

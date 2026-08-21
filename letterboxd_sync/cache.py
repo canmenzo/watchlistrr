@@ -1,8 +1,8 @@
 """SQLite cache: resolved TMDB ids and a record of what we already synced.
 
 Resolving a Letterboxd slug costs one HTTP request, so results are cached
-permanently. The ``synced`` table keeps each run cheap and, for Plex, records
-exactly which items this tool added so pruning can never touch anything else.
+permanently. The ``synced`` table records what has already been requested, which
+keeps repeat runs cheap and lets a sync stop paging once it recognises everything.
 """
 
 from __future__ import annotations
@@ -107,12 +107,4 @@ class Cache:
         )
         self.conn.commit()
 
-    def unmark_synced(self, slug: str, target: str) -> None:
-        self.conn.execute("DELETE FROM synced WHERE slug = ? AND target = ?", (slug, target))
-        self.conn.commit()
 
-    def synced_slugs(self, target: str) -> dict[str, str | None]:
-        rows = self.conn.execute(
-            "SELECT slug, external_id FROM synced WHERE target = ?", (target,)
-        ).fetchall()
-        return {row["slug"]: row["external_id"] for row in rows}

@@ -29,26 +29,11 @@ def test_put_film_is_idempotent_and_updates(tmp_path):
     assert loaded.tmdb_id == 2
 
 
-def test_sync_bookkeeping_is_per_target(tmp_path):
+def test_sync_bookkeeping_records_what_was_requested(tmp_path):
     with make_cache(tmp_path) as cache:
+        assert cache.is_synced("x", "overseerr") is False
         cache.mark_synced("x", "overseerr", "496243")
         assert cache.is_synced("x", "overseerr") is True
-        assert cache.is_synced("x", "plex") is False
-
-
-def test_synced_slugs_returns_external_ids(tmp_path):
-    with make_cache(tmp_path) as cache:
-        cache.mark_synced("a", "plex", "5d77")
-        cache.mark_synced("b", "plex", "5d88")
-        cache.mark_synced("c", "overseerr", "1")
-        assert cache.synced_slugs("plex") == {"a": "5d77", "b": "5d88"}
-
-
-def test_unmark_synced(tmp_path):
-    with make_cache(tmp_path) as cache:
-        cache.mark_synced("a", "plex", "5d77")
-        cache.unmark_synced("a", "plex")
-        assert cache.is_synced("a", "plex") is False
 
 
 def test_cache_survives_reopen(tmp_path):

@@ -1,9 +1,9 @@
 [project]
 name = "letterboxd-overseerr-sync"
 version = "1.0.0"
-description = "Sync a Letterboxd watchlist into Overseerr/Jellyseerr/Seerr and/or the Plex watchlist"
+description = "Sync a Letterboxd watchlist into Seerr (formerly Overseerr)"
 requires-python = ">=3.10"
-dependencies = ["requests>=2.31,<3", "plexapi>=4.15,<5"]
+dependencies = ["requests>=2.31,<3"]
 
 [project.scripts]
 letterboxd-sync = "letterboxd_sync.__main__:main"
