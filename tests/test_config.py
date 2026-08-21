@@ -14,6 +14,17 @@ def clean_env(monkeypatch):
             monkeypatch.delenv(key, raising=False)
 
 
+def test_a_comma_separated_username_is_split_into_several_watchlists(monkeypatch):
+    """Regression: this asked Letterboxd for a user called "menzo,losemiros"."""
+    monkeypatch.setenv("LETTERBOXD_USERNAME", "menzo, losemiros")
+    monkeypatch.setenv("OVERSEERR_URL", "http://nas:5055")
+    monkeypatch.setenv("OVERSEERR_API_KEY", "k")
+    assert load_config().lists == [
+        "https://letterboxd.com/menzo/watchlist",
+        "https://letterboxd.com/losemiros/watchlist",
+    ]
+
+
 def test_normalise_bare_username_becomes_a_watchlist():
     assert normalise_list_ref("dave") == "https://letterboxd.com/dave/watchlist"
 

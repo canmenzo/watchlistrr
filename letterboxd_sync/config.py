@@ -108,9 +108,11 @@ def load_config() -> Config:
     for raw in _str("LETTERBOXD_LISTS").split(","):
         if raw.strip():
             refs.append(raw)
-    username = _str("LETTERBOXD_USERNAME")
-    if username:
-        refs.append(f"{username}/watchlist")
+    # Commas here are a common mistake - accept them rather than asking
+    # Letterboxd for a user called "alice,bob".
+    for username in _str("LETTERBOXD_USERNAME").split(","):
+        if username.strip():
+            refs.append(f"{username.strip()}/watchlist")
     if not refs:
         raise ConfigError(
             "Set LETTERBOXD_USERNAME (for your watchlist) or LETTERBOXD_LISTS "
