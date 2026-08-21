@@ -100,7 +100,7 @@ Everything is environment variables — see [`.env.example`](.env.example).
 | Variable | Default | Meaning |
 |---|---|---|
 | `LETTERBOXD_USERNAME` | — | Your Letterboxd username. Syncs that user's watchlist. |
-| `LETTERBOXD_LISTS` | — | Extra lists, comma separated. Full URLs, `user/list/slug`, or `user/watchlist`. |
+| `LETTERBOXD_LISTS` | — | More lists and more people, comma separated. A bare username means that user's watchlist, or use `user/list/slug` or a full URL. Films appearing on several lists are only requested once. |
 | `SYNC_TARGET` | `overseerr` | `overseerr`, `plex`, or `both`. |
 | `OVERSEERR_URL` | — | e.g. `http://192.168.1.10:5055`. Works for Overseerr, Jellyseerr and Seerr. |
 | `OVERSEERR_API_KEY` | — | Settings → General → API Key. |
