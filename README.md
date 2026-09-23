@@ -4,8 +4,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Everything on your **Letterboxd watchlist**, automatically requested in **Seerr** (formerly
-Overseerr). Seerr can't read a Letterboxd watchlist — its only watchlist source is Plex.
-This closes that gap.
+Overseerr).
 
 Films are matched by **TMDB ID**, never by title, so *Nosferatu (1922)* can never show up
 when you meant *Nosferatu (2024)*. No browser, no third-party service.
