@@ -1,23 +1,31 @@
 # 🎬 Watchlistrr
 
 [![tests](https://github.com/canmenzo/watchlistrr/actions/workflows/tests.yml/badge.svg)](https://github.com/canmenzo/watchlistrr/actions/workflows/tests.yml)
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![license](https://img.shields.io/github/license/canmenzo/watchlistrr)](LICENSE)
+![python](https://img.shields.io/badge/python-3.10+-blue?logo=python&logoColor=white)
+![docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)
 
 Everything on your **Letterboxd watchlist**, automatically requested in **Seerr** (formerly
-Overseerr).
-
-Films are matched by **TMDB ID**, never by title, so *Nosferatu (1922)* can never show up
-when you meant *Nosferatu (2024)*. No browser, no third-party service.
+Overseerr). For people running a self-hosted Seerr + Radarr stack.
 
 ```
 Letterboxd watchlist ──▶ Watchlistrr ──▶ Seerr ──▶ Radarr ──▶ your library
 ```
 
+## ✨ Features
+
+- 🎯 Films are matched by **TMDB ID**, never by title, so *Nosferatu (1922)* never shows up when you meant *Nosferatu (2024)*.
+- 👥 Several users and custom lists at once (`user`, `user/list/slug` or full URLs); films on several lists are requested once.
+- ⚡ Stops paging at the first page with nothing new, so a routine sync is one request.
+- 💾 SQLite cache of slug to TMDB ID and of past requests; skips anything already requested or in your library.
+- 🧪 `--check` and `--dry-run` to test the setup before anything is requested; optional 4K requests and per-user filing.
+- 🐳 Runs in Docker on a loop, once from cron, or as plain Python. No browser, no third-party service.
+
 ---
 
 ## 🚀 Quick start
 
-**1.** Your Letterboxd watchlist must be public — Letterboxd has no API, so this reads the
+**1.** Your Letterboxd watchlist must be public. Letterboxd has no API, so this reads the
 page like a browser would. No login, no password.
 
 **2.** Get your API key: Seerr → **Settings → General → API Key**. Its user needs
@@ -66,17 +74,17 @@ set -a && . ./.env && set +a && .venv/bin/python -m watchlistrr --once
 
 ## ⚙️ Configuration
 
-Environment variables — see [`.env.example`](.env.example).
+Environment variables, see [`.env.example`](.env.example).
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `LETTERBOXD_USERNAME` | — | Your Letterboxd username. Several can be comma separated. |
-| `LETTERBOXD_LISTS` | — | More people and more lists, comma separated. A bare username means that user's watchlist; also accepts `user/list/slug` and full URLs. Films on several lists are requested once. |
-| `OVERSEERR_URL` | — | e.g. `http://192.168.1.10:5055`. No trailing `/api/v1`. |
-| `OVERSEERR_API_KEY` | — | Settings → General → API Key. |
+| `LETTERBOXD_USERNAME` | | Your Letterboxd username. Several can be comma separated. |
+| `LETTERBOXD_LISTS` | | More people and more lists, comma separated. A bare username means that user's watchlist; also accepts `user/list/slug` and full URLs. Films on several lists are requested once. |
+| `OVERSEERR_URL` | | e.g. `http://192.168.1.10:5055`. No trailing `/api/v1`. |
+| `OVERSEERR_API_KEY` | | Settings → General → API Key. |
 | `OVERSEERR_USER_ID` | API key owner | File requests under a specific Seerr user. |
 | `OVERSEERR_IS_4K` | `false` | Request the 4K version instead. Needs a 4K server configured in Seerr. |
-| `SYNC_INTERVAL_MINUTES` | `0` | Minutes between syncs. `0` = run once and exit. `15` is comfortable — see below. |
+| `SYNC_INTERVAL_MINUTES` | `0` | Minutes between syncs. `0` = run once and exit. `15` is comfortable, see below. |
 | `DRY_RUN` | `false` | Report what would happen, change nothing. |
 | `LIMIT` | `0` | Only process the first N films. `0` = no limit. |
 | `REQUEST_DELAY_SECONDS` | `1.0` | Politeness delay between Letterboxd page loads. |
@@ -123,11 +131,11 @@ Please leave `REQUEST_DELAY_SECONDS` at 1.0 or higher.
 
 **`returned HTTP 403`**
 Letterboxd answers non-canonical URLs with a Cloudflare challenge. Page one is always
-requested with a trailing slash for this reason — if you see a 403, check that the watchlist
+requested with a trailing slash for this reason. If you see a 403, check that the watchlist
 is public by opening it in a private browser window.
 
 **`Found no films on … The list may be private, or Letterboxd changed its markup`**
-If the list is public, Letterboxd changed its HTML — see `SLUG_PATTERNS` in
+If the list is public, Letterboxd changed its HTML: see `SLUG_PATTERNS` in
 `watchlistrr/letterboxd.py`; adding one regex there is usually the whole fix.
 
 **`Overseerr rejected the API key`**
@@ -137,7 +145,7 @@ Regenerate it under Settings → General. Check `OVERSEERR_URL` has no trailing 
 Set `OVERSEERR_USER_ID` to a user that has Request permission, or grant it to the key's owner.
 
 **Requests show as Failed in Seerr**
-Usually a timeout, not a rejection — Seerr gives Radarr 10 seconds to respond, and Radarr
+Usually a timeout, not a rejection. Seerr gives Radarr 10 seconds to respond, and Radarr
 gets slow when hundreds of requests arrive at once with search-on-add enabled. The films
 generally land in Radarr anyway. Turn off **Enable Automatic Search** in
 **Settings → Services → Radarr** and search in batches instead.
@@ -164,4 +172,4 @@ real CLI against stub HTTP servers.
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE). Built as part of [canmenzo/NASServer](https://github.com/canmenzo/NASServer).
+MIT, see [LICENSE](LICENSE). Built as part of [canmenzo/NASServer](https://github.com/canmenzo/NASServer).
