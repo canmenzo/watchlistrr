@@ -1,7 +1,7 @@
 services:
   watchlistrr:
     build: .
-    # Or, once you have built and pushed it to a registry:
+    # Or skip the build and use the prebuilt image (amd64 + arm64):
     # image: ghcr.io/canmenzo/watchlistrr:latest
     container_name: watchlistrr
     env_file: .env

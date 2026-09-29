@@ -44,6 +44,8 @@ docker compose run --rm watchlistrr --check                     # verify every e
 docker compose run --rm watchlistrr --once --dry-run --limit 5  # rehearsal
 ```
 
+To skip the local build, swap `build: .` for `image: ghcr.io/canmenzo/watchlistrr:latest` in `docker-compose.yml`.
+
 **4.** Let it run:
 
 ```bash
